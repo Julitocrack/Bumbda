@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>BUMDA sobre la función Rastrigin</title>
+<meta name="description" content="Presentación interactiva del Proyecto 2: el algoritmo BUMDA minimizando la función Rastrigin con n = 4.">
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --paper:#F1F4F8; --panel:#FFFFFF; --ink:#1A2740; --muted:#55657D; --line:#CBD4DF;
+  --teal:#0F6E7C; --mag:#D6336C; --deep:#0B3C49;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:"Avenir Next","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 1.0625rem/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 clamp(16px,4vw,40px)}
+.block{padding:clamp(40px,7vw,88px) 0;border-top:1px solid var(--line)}
+.block.first{border-top:0;padding-top:clamp(28px,5vw,56px)}
+h1,h2,h3{font-family:var(--serif);font-weight:600;letter-spacing:-.015em;margin:0}
+h1{font-size:clamp(2.3rem,5vw,3.7rem);line-height:1.04}
+h2{font-size:clamp(1.7rem,3.2vw,2.35rem);line-height:1.12;margin-bottom:.6em}
+h3{font-size:1.25rem;line-height:1.2;margin-bottom:.4em}
+p{margin:0 0 1em;max-width:64ch}
+.lead{font-size:1.2rem;line-height:1.55;color:var(--ink);margin-top:1.1em}
+.muted{color:var(--muted)}
+.small{font-size:.92rem}
+.tnum{font-variant-numeric:tabular-nums}
+.math{font-family:var(--serif);font-style:italic}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ---------- Hero ---------- */
+.hero{display:grid;gap:clamp(24px,4vw,56px);grid-template-columns:minmax(0,5fr) minmax(0,7fr);
+  grid-template-areas:"head sim" "steps sim";grid-template-rows:auto 1fr;align-items:start}
+.hero-head{grid-area:head}.hero-steps{grid-area:steps}.hero-sim{grid-area:sim}
+.authors{margin:1.4em 0 0;color:var(--muted);font-size:.98rem}
+.steps{margin:0;padding:0;list-style:none;counter-reset:s;border-left:2px solid var(--line)}
+.steps li{counter-increment:s;position:relative;padding:.55em 0 .55em 1.2em;color:var(--muted);transition:color .15s}
+.steps li::before{content:counter(s);position:absolute;left:-.95em;top:.62em;width:1.5em;height:1.5em;border-radius:50%;
+  background:var(--paper);border:2px solid var(--line);font-size:.78rem;line-height:1.25em;text-align:center;font-weight:600;transition:all .15s}
+.steps li strong{color:inherit;font-weight:650}
+.steps li.on{color:var(--ink)}
+.steps li.on::before{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.steps-title{margin-bottom:.8em}
+
+.readouts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.ro{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 12px}
+.ro span{display:block;font-size:.8rem;color:var(--muted);line-height:1.3}
+.ro b{display:block;font-size:1.25rem;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.35}
+.canvas-wrap{position:relative;width:min(100%,70vh);aspect-ratio:1/1;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--deep)}
+.canvas-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:12px 0 0;padding:0;list-style:none;font-size:.86rem;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:7px}
+.sw{display:inline-block;flex:none}
+.sw.dot{width:11px;height:11px;border-radius:50%;background:var(--mag);border:1.5px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.sw.dot.fade{opacity:.3}
+.sw.ring{width:13px;height:13px;border-radius:50%;border:2px solid var(--ink);background:transparent}
+.sw.model{width:20px;height:11px;border-radius:50%;border:2px dashed var(--ink)}
+.sw.sq{width:11px;height:11px;border:2px solid #fff;outline:1.5px solid var(--ink);background:transparent}
+.sw.bar{width:54px;height:10px;border-radius:2px;background:linear-gradient(90deg,#0B3C49,#1F6F80,#86C5BB,#F1EBC8,#E3A857)}
+
+.controls{margin-top:18px;display:grid;gap:14px}
+.toolbar{margin:0 0 12px;gap:8px}
+.toolbar .btn{padding:.78em .95em}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{appearance:none;font:inherit;font-weight:600;font-size:.98rem;line-height:1;padding:.78em 1.15em;border-radius:6px;border:1.5px solid var(--ink);
+  background:var(--ink);color:var(--paper);cursor:pointer;transition:background .12s,color .12s}
+.btn:hover{background:#2a3d63}
+.btn.alt{background:transparent;color:var(--ink)}
+.btn.alt:hover{background:rgba(26,39,64,.07)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:focus-visible,input:focus-visible,.seg input:focus-visible+span{outline:3px solid var(--teal);outline-offset:2px}
+.sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px}
+.sl label{display:flex;justify-content:space-between;gap:8px;font-size:.92rem;margin-bottom:2px}
+.sl output{font-weight:650;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--teal);margin:0;height:28px}
+.seg{display:inline-flex;border:1.5px solid var(--ink);border-radius:6px;overflow:hidden}
+.seg label{position:relative;cursor:pointer}
+.seg input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer}
+.seg span{display:block;padding:.62em .65em;font-size:.84rem;font-weight:600;white-space:nowrap}
+.seg input:checked+span{background:var(--ink);color:var(--paper)}
+fieldset{border:0;padding:0;margin:0;min-width:0}
+
+/* ---------- Secciones ---------- */
+.split{display:grid;gap:clamp(24px,4vw,56px);grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start}
+.plot{width:100%;height:340px;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:block;touch-action:pan-y;cursor:crosshair}
+.plot.tall{height:360px;cursor:default;touch-action:auto}
+.probe{margin-top:12px;display:grid;gap:10px}
+.probe .sl{max-width:none}
+.eq{font-variant-numeric:tabular-nums;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 14px;font-size:1rem;line-height:1.5}
+.eq b{font-weight:650}
+
+.resultbox{margin-top:22px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px 18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat span{display:block;font-size:.82rem;color:var(--muted)}
+.stat b{overflow-wrap:anywhere;display:block;font-size:1.15rem;font-variant-numeric:tabular-nums;font-weight:650}
+.tablewrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{padding:6px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:#E7ECF2;font-weight:650}
+th:first-child,td:first-child{text-align:left}
+.status{min-height:1.5em;font-size:.95rem;color:var(--muted)}
+.hint{font-size:.95rem;color:var(--muted);max-width:64ch}
+
+.concl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(22px,4vw,56px)}
+.concl p,.concl li{max-width:60ch}
+.concl ul{margin:0;padding-left:1.2em}
+.concl li{margin-bottom:.55em}
+.result-line{font-family:var(--serif);font-size:clamp(1.3rem,2.4vw,1.75rem);line-height:1.3;margin:0 0 .9em;max-width:none}
+footer{border-top:1px solid var(--line);padding:28px 0 44px;color:var(--muted);font-size:.95rem}
+
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;grid-template-areas:"head" "sim" "steps";grid-template-rows:auto}
+  .split,.concl{grid-template-columns:1fr}
+  .canvas-wrap{width:100%}
+}
+@media (max-width:560px){
+  h1{font-size:2.05rem}
+  .lead{font-size:1.02rem;line-height:1.5;margin-top:.7em}
+  .authors{margin-top:.7em;font-size:.9rem}
+  .readouts{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .ro{padding:6px 10px}.ro b{font-size:1.05rem}
+  .toolbar{gap:8px}.btn{padding:.7em .95em;font-size:.92rem}
+  .first{padding-top:20px}
+  .sliders{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<main>
+<!-- ============ 1. Hero: simulación en vivo ============ -->
+<section class="block first" aria-labelledby="t-hero">
+ <div class="wrap hero">
+  <div class="hero-head">
+   <h1 id="t-hero">BUMDA sobre la función Rastrigin</h1>
+   <p class="lead">Una población de soluciones al azar se va concentrando, generación tras generación, en el mínimo de la función. Aquí lo puedes ver pasar con dos variables y después con las cuatro del proyecto.</p>
+   <p class="authors">Proyecto 2. Julio Rangel Ortiz y Bruno Gael Ramos Huerta.</p>
+  </div>
+
+  <div class="hero-steps">
+   <h2 class="steps-title" style="font-size:1.35rem">Qué pasa en cada generación</h2>
+   <ol class="steps" id="steps">
+    <li data-p="0"><strong>Evaluar.</strong> <span id="s1"></span></li>
+    <li data-p="1"><strong>Seleccionar.</strong> <span id="s2"></span></li>
+    <li data-p="2"><strong>Ajustar el modelo.</strong> Con la élite se calcula una media y una desviación por variable; las mejores soluciones pesan más.</li>
+    <li data-p="3"><strong>Muestrear.</strong> Se genera una población nueva con esa distribución normal, recortada a ±25.</li>
+   </ol>
+  </div>
+
+  <div class="hero-sim">
+   <div class="readouts" aria-label="Estado de la simulación">
+    <div class="ro"><span>Generación</span><b id="roGen">0</b></div>
+    <div class="ro"><span>Mejor f encontrada</span><b id="roBest">—</b></div>
+    <div class="ro"><span>Distancia al óptimo</span><b id="roErr">—</b></div>
+    <div class="ro"><span>Desviación del modelo</span><b id="roSig">—</b></div>
+   </div>
+    <div class="row toolbar">
+     <button class="btn" id="bPlay" type="button">Pausar</button>
+     <button class="btn alt" id="bStep" type="button">Siguiente fase</button>
+     <button class="btn alt" id="bReset" type="button">Reiniciar</button>
+     <fieldset class="seg" style="margin-left:auto">
+      <legend class="vh">Zona del mapa</legend>
+      <label><input type="radio" name="zoom" value="25" checked><span>Completo ±25</span></label>
+      <label><input type="radio" name="zoom" value="3"><span>Zoom ±3</span></label>
+     </fieldset>
+    </div>
+   <div class="canvas-wrap">
+    <canvas id="heat" role="img" aria-label="Mapa de calor de la función Rastrigin con dos variables y la población de BUMDA moviéndose hacia el mínimo"></canvas>
+   </div>
+   <ul class="legend" aria-label="Leyenda del mapa">
+    <li><span class="sw bar"></span>f menor a f mayor</li>
+    <li><span class="sw dot"></span>Solución</li>
+    <li><span class="sw dot fade"></span>Descartada</li>
+    <li><span class="sw ring"></span>Mejor encontrada</li>
+    <li><span class="sw model"></span>Modelo: media y ±2σ</li>
+    <li><span class="sw sq"></span>Óptimo global</li>
+   </ul>
+
+   <div class="controls">
+    <div class="sliders">
+     <div class="sl"><label for="slN">Población <output id="oN">300</output></label><input id="slN" type="range" min="10" max="600" step="10" value="300"></div>
+     <div class="sl"><label for="slP">Élite <output id="oP">50 %</output></label><input id="slP" type="range" min="10" max="90" step="5" value="50"></div>
+     <div class="sl"><label for="slG">Generaciones <output id="oG">60</output></label><input id="slG" type="range" min="10" max="200" step="5" value="60"></div>
+     <div class="sl"><label for="slS">Velocidad <output id="oS">4</output></label><input id="slS" type="range" min="1" max="5" step="1" value="4"></div>
+    </div>
+    <p class="status" id="simStatus" aria-live="polite"></p>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ============ 2. Por qué el mínimo no es cero ============ -->
+<section class="block" aria-labelledby="t-fun">
+ <div class="wrap split">
+  <div>
+   <h2 id="t-fun">El mínimo no es cero</h2>
+   <p>Con la fórmula del proyecto, cada variable aporta <span class="math">h(x) = 10 + x² + 10·cos(2πx)</span> y la función completa es la suma de esos aportes. En x = 0 el coseno vale 1, así que h llega a 20: el origen es un máximo local, no el mínimo.</p>
+   <p>El valor más bajo aparece donde el coseno vale casi −1, cerca de x = ±0.5. Como las variables se suman por separado, el mínimo global con n = 4 es cuatro veces el mínimo de h.</p>
+   <p class="hint">Arrastra sobre la gráfica o mueve el control para probar valores. Aquí las cuatro variables valen lo mismo.</p>
+  </div>
+  <div>
+   <canvas id="prof" class="plot" role="img" aria-label="Gráfica de h(x) entre −3 y 3 con sus mínimos locales y el mínimo global cerca de ±0.5"></canvas>
+   <ul class="legend" aria-label="Leyenda de la gráfica">
+    <li>Eje horizontal: x. Eje vertical: h(x).</li>
+    <li><span class="sw dot"></span>Mínimo global</li>
+    <li><span class="sw ring" style="border-color:#0F6E7C"></span>Mínimo local</li>
+    <li><span class="sw dot" style="background:#0F6E7C"></span>Valor de prueba</li>
+   </ul>
+   <div class="probe">
+    <div class="sl"><label for="slX">Valor de x <output id="oX">0.50</output></label><input id="slX" type="range" min="-3" max="3" step="0.01" value="0.5"></div>
+    <div class="eq" id="eqOut"></div>
+    <div class="row"><button class="btn alt" id="bOpt" type="button">Ir al mínimo global</button><button class="btn alt" id="bOrig" type="button">Ir al origen</button></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ============ 3. n = 4 ============ -->
+<section class="block" aria-labelledby="t-n4">
+ <div class="wrap">
+  <h2 id="t-n4">El problema real: n = 4</h2>
+  <p>Aquí BUMDA trabaja con las cuatro variables y el espacio completo de ±25. Cambia los parámetros y corre el algoritmo una vez o treinta veces, con números aleatorios nuevos en cada corrida.</p>
+  <p class="hint">Prueba una población pequeña y repite las 30 corridas: fíjate en cuántas llegan al óptimo.</p>
+
+  <div class="controls" style="max-width:760px">
+   <div class="sliders">
+    <div class="sl"><label for="nN">Población <output id="onN">300</output></label><input id="nN" type="range" min="10" max="600" step="10" value="300"></div>
+    <div class="sl"><label for="nP">Élite <output id="onP">50 %</output></label><input id="nP" type="range" min="10" max="90" step="5" value="50"></div>
+    <div class="sl"><label for="nG">Generaciones <output id="onG">200</output></label><input id="nG" type="range" min="20" max="300" step="10" value="200"></div>
+   </div>
+   <div class="row">
+    <button class="btn" id="bOne" type="button">Correr una vez</button>
+    <button class="btn" id="bThirty" type="button">Correr 30 veces</button>
+   </div>
+   <p class="status" id="runStatus" aria-live="polite"></p>
+  </div>
+
+  <div class="resultbox" id="resultBox" hidden>
+   <div class="card"><div class="stats" id="statsBox"></div></div>
+   <div>
+    <h3>Convergencia</h3>
+    <p class="muted small" id="convNote" style="margin-bottom:10px"></p>
+    <canvas id="conv" class="plot tall" role="img" aria-label="Distancia al óptimo global por generación, en escala logarítmica"></canvas>
+   </div>
+   <div id="tableBlock">
+    <h3>Cada corrida</h3>
+    <div class="tablewrap"><table id="runTable"></table></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<!-- ============ 4. Conclusiones ============ -->
+<section class="block" aria-labelledby="t-con">
+ <div class="wrap">
+  <h2 id="t-con">Conclusiones</h2>
+  <p class="result-line">El mínimo es f ≈ 0.994959, con cada variable en x = ±0.49748.</p>
+  <div class="concl">
+   <div>
+    <h3>Cómo convergió</h3>
+    <ul>
+     <li>La población parte de una distribución uniforme en ±25, con una desviación grande, así que al inicio explora casi todo el espacio.</li>
+     <li>En cada generación se queda con la mitad mejor y ajusta un modelo normal con pesos g = θ − f. Las mejores soluciones pesan más y la media se desplaza hacia donde f es menor.</li>
+     <li>Como la élite está cada vez más junta, la desviación baja. Primero el algoritmo localiza la cuenca del óptimo cerca del origen y después afina hasta ±0.49748.</li>
+     <li>En el notebook, las 30 corridas quedaron a menos de 10⁻⁶ del óptimo en promedio hacia la generación 70. Las 200 generaciones dejan margen de sobra.</li>
+    </ul>
+   </div>
+   <div>
+    <h3>Por qué es el óptimo global</h3>
+    <ul>
+     <li>La función es separable: cada variable se minimiza por su cuenta, y el mínimo global es cuatro veces el mínimo de h.</li>
+     <li>Una búsqueda de fuerza bruta en [−25, 25] da x = ±0.49748 y f = 0.994959, igual que BUMDA. Los demás mínimos locales de h (cerca de ±1.5, ±2.5…) son peores porque x² crece al alejarse del origen.</li>
+     <li>El resultado no es 0 porque en el origen f vale 80. Cada variable puede caer en +0.49748 o en −0.49748, así que hay 2⁴ = 16 soluciones óptimas equivalentes.</li>
+    </ul>
+    <h3 style="margin-top:1.1em">Limitaciones</h3>
+    <p>BUMDA es estocástico y no garantiza matemáticamente llegar al óptimo global. Lo que respalda el resultado es que coincide con el óptimo calculado por fuerza bruta y que se repite en las 30 corridas del notebook. En pruebas con cientos de corridas, menos del 1 % se queda un poco por encima del óptimo (por ejemplo, f ≈ 0.996) porque el modelo se cierra antes de afinar. Por eso, de vez en cuando, el experimento de arriba muestra 29 de 30.</p>
+   </div>
+  </div>
+ </div>
+</section>
+</main>
+
+<footer>
+ <div class="wrap">Proyecto 2: algoritmo BUMDA aplicado a la función Rastrigin. Julio Rangel Ortiz y Bruno Gael Ramos Huerta. Esta página reimplementa el algoritmo en JavaScript; el entregable es el notebook.</div>
+</footer>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Núcleo de BUMDA (mismo algoritmo que el notebook)
+   f(x) = 10n + Σ(xᵢ² + 10·cos(2πxᵢ))  =  Σ h(xᵢ)
+   ===================================================================== */
+const TAU = Math.PI * 2;
+const LO = -25, HI = 25;
+const h = x => 10 + x * x + 10 * Math.cos(TAU * x);
+const fobj = x => { let s = 0; for (let i = 0; i < x.length; i++) s += h(x[i]); return s; };
+
+// Mínimo de h. Basta buscar en [0, 1]: fuera de [−1, 1], h(x) ≥ 1 y el mínimo es ≈ 0.25.
+let X_OPT = 0, H_MIN = Infinity;
+for (let x = 0; x <= 1; x += 1e-6) { const v = h(x); if (v < H_MIN) { H_MIN = v; X_OPT = x; } }
+// Se afina la posición con una búsqueda ternaria, para que ningún resultado quede por debajo del óptimo por redondeo.
+{ let a = X_OPT - 2e-6, b = X_OPT + 2e-6;
+  for (let i = 0; i < 80; i++) { const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3; if (h(m1) < h(m2)) b = m2; else a = m1; }
+  X_OPT = (a + b) / 2; H_MIN = h(X_OPT); }
+const fopt = d => d * H_MIN;
+
+function randn() {                       // normal estándar (Box–Muller)
+  let u = 0; while (u === 0) u = Math.random();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * Math.random());
+}
+function initPop(N, d) {
+  const P = new Array(N);
+  for (let i = 0; i < N; i++) { const r = new Float64Array(d); for (let j = 0; j < d; j++) r[j] = LO + (HI - LO) * Math.random(); P[i] = r; }
+  return P;
+}
+function selectElite(fit, ps) {          // índices de la élite (menor fitness = mejor)
+  const idx = Array.from(fit.keys()).sort((a, b) => fit[a] - fit[b]);
+  return idx.slice(0, Math.max(2, Math.floor(fit.length * ps)));
+}
+function fitModel(P, fit, elite, d) {    // pesos g = θ − f, con θ = peor fitness de la élite
+  let theta = -Infinity;
+  for (const i of elite) if (fit[i] > theta) theta = fit[i];
+  const w = elite.map(i => theta - fit[i] + 1e-12);
+  const sw = w.reduce((a, b) => a + b, 0);
+  const mean = new Float64Array(d), sd = new Float64Array(d);
+  for (let j = 0; j < d; j++) {
+    let m = 0; for (let k = 0; k < elite.length; k++) m += w[k] * P[elite[k]][j];
+    m /= sw; mean[j] = m;
+    let v = 0; for (let k = 0; k < elite.length; k++) { const t = P[elite[k]][j] - m; v += w[k] * t * t; }
+    sd[j] = Math.sqrt(v / sw) + 1e-12;
+  }
+  return { mean, sd };
+}
+function samplePop(N, mean, sd) {        // normal por variable, recortada a [−25, 25]
+  const d = mean.length, P = new Array(N);
+  for (let i = 0; i < N; i++) {
+    const r = new Float64Array(d);
+    for (let j = 0; j < d; j++) r[j] = Math.min(HI, Math.max(LO, mean[j] + sd[j] * randn()));
+    P[i] = r;
+  }
+  return P;
+}
+function runBUMDA(N, d, G, ps) {         // una corrida completa; sin semilla
+  let P = initPop(N, d), best = Infinity, bestX = null;
+  const hist = new Float64Array(G);
+  for (let g = 0; g < G; g++) {
+    const fit = P.map(fobj);
+    let im = 0; for (let i = 1; i < N; i++) if (fit[i] < fit[im]) im = i;
+    if (fit[im] < best) { best = fit[im]; bestX = Float64Array.from(P[im]); }
+    hist[g] = best;
+    const elite = selectElite(fit, ps);
+    const { mean, sd } = fitModel(P, fit, elite, d);
+    P = samplePop(N, mean, sd);
+  }
+  return { best, bestX, hist };
+}
+
+/* =====================================================================
+   Utilidades de dibujo
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+function fitCanvas(c) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = c.clientWidth, hgt = c.clientHeight;
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(hgt * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(hgt * dpr); }
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h: hgt };
+}
+function halo(ctx, text, x, y, color) {  // texto con contorno claro para que se lea sobre cualquier fondo
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.strokeText(text, x, y);
+  ctx.fillStyle = color || '#1A2740'; ctx.fillText(text, x, y);
+}
+const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+const sup = n => String(n).split('').map(c => SUP[c] || c).join('');
+const dist = v => Math.max(0, v);
+const fmt = (v, dgt = 4) => (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : v.toFixed(dgt);
+const STOPS = [[0, [11, 60, 73]], [.25, [31, 111, 128]], [.5, [134, 197, 187]], [.75, [241, 235, 200]], [1, [227, 168, 87]]];
+function ramp(t) {
+  for (let i = 1; i < STOPS.length; i++) if (t <= STOPS[i][0]) {
+    const [t0, c0] = STOPS[i - 1], [t1, c1] = STOPS[i], u = (t - t0) / (t1 - t0);
+    return [c0[0] + (c1[0] - c0[0]) * u, c0[1] + (c1[1] - c0[1]) * u, c0[2] + (c1[2] - c0[2]) * u];
+  }
+  return STOPS[STOPS.length - 1][1];
+}
+
+/* =====================================================================
+   1. Simulación en vivo (n = 2)
+   ===================================================================== */
+const canvas = $('heat');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SPEED_MS = [900, 450, 250, 110, 30];
+const sim = { P: null, fit: null, elite: null, mean: null, sd: null, gen: 0, phase: 0, best: Infinity, bestX: null, sigma: null, done: false, playing: false, timer: null, R: 25, N: 300, ps: .5, G: 60, speed: 4 };
+let heatImg = null, heatR = null;
+
+function buildHeat(R) {
+  const S = 520, off = document.createElement('canvas'); off.width = off.height = S;
+  const octx = off.getContext('2d'), img = octx.createImageData(S, S), vals = new Float32Array(S * S);
+  let mn = Infinity, mx = -Infinity;
+  for (let j = 0; j < S; j++) { const y = R - (j + .5) / S * 2 * R; for (let i = 0; i < S; i++) {
+    const x = -R + (i + .5) / S * 2 * R, v = h(x) + h(y); vals[j * S + i] = v; if (v < mn) mn = v; if (v > mx) mx = v; } }
+  for (let k = 0; k < S * S; k++) { const c = ramp(Math.log(1 + (vals[k] - mn) / 10) / Math.log(1 + (mx - mn) / 10)); img.data[4 * k] = c[0]; img.data[4 * k + 1] = c[1]; img.data[4 * k + 2] = c[2]; img.data[4 * k + 3] = 255; }
+  octx.putImageData(img, 0, 0); heatImg = off; heatR = R;
+}
+function evalCurrent() {
+  sim.fit = sim.P.map(fobj);
+  let im = 0; for (let i = 1; i < sim.fit.length; i++) if (sim.fit[i] < sim.fit[im]) im = i;
+  if (sim.fit[im] < sim.best) { sim.best = sim.fit[im]; sim.bestX = Float64Array.from(sim.P[im]); }
+  sim.gen++; sim.elite = null; sim.mean = null; sim.phase = 0;
+  if (sim.gen >= sim.G) sim.done = true;
+}
+function simReset() {
+  clearTimeout(sim.timer); sim.playing = false;
+  sim.N = +$('slN').value; sim.ps = +$('slP').value / 100; sim.G = +$('slG').value; sim.speed = +$('slS').value;
+  sim.P = initPop(sim.N, 2); sim.gen = 0; sim.best = Infinity; sim.bestX = null; sim.sigma = null; sim.done = false;
+  evalCurrent(); $('simStatus').textContent = ''; updateUI(); drawHeat();
+}
+function simStep() {
+  if (sim.done) return;
+  if (sim.phase === 0) { sim.elite = selectElite(sim.fit, sim.ps); sim.phase = 1; }
+  else if (sim.phase === 1) { const m = fitModel(sim.P, sim.fit, sim.elite, 2); sim.mean = m.mean; sim.sd = m.sd; sim.sigma = (m.sd[0] + m.sd[1]) / 2; sim.phase = 2; }
+  else if (sim.phase === 2) { sim.P = samplePop(sim.N, sim.mean, sim.sd); sim.fit = null; sim.elite = null; sim.phase = 3; }
+  else { evalCurrent(); }
+  if (sim.done) { sim.playing = false; clearTimeout(sim.timer);
+    $('simStatus').textContent = `Terminó en la generación ${sim.gen}: mejor f = ${sim.best.toFixed(6)}, a ${fmt(dist(sim.best - fopt(2)), 3)} del óptimo.`; }
+  updateUI(); drawHeat();
+}
+function simTick() { if (!sim.playing) return; simStep(); if (sim.playing) sim.timer = setTimeout(simTick, SPEED_MS[sim.speed - 1]); }
+function simPlay() { if (sim.done) simReset(); sim.playing = true; updateUI(); sim.timer = setTimeout(simTick, 60); }
+function simPause() { sim.playing = false; clearTimeout(sim.timer); updateUI(); }
+
+function updateUI() {
+  $('roGen').textContent = `${sim.gen} de ${sim.G}`;
+  $('roBest').textContent = isFinite(sim.best) ? sim.best.toFixed(4) : '—';
+  $('roErr').textContent = isFinite(sim.best) ? fmt(dist(sim.best - fopt(2)), 3) : '—';
+  $('roSig').textContent = sim.sigma != null ? sim.sigma.toFixed(3) : '—';
+  $('s1').textContent = `Se calcula f(x) de cada una de las ${sim.N} soluciones.`;
+  $('s2').textContent = `Se conserva el ${Math.round(sim.ps * 100)} % mejor (${Math.max(2, Math.floor(sim.N * sim.ps))} soluciones): la élite.`;
+  document.querySelectorAll('#steps li').forEach(li => li.classList.toggle('on', +li.dataset.p === sim.phase));
+  $('bPlay').textContent = sim.playing ? 'Pausar' : (sim.done ? 'Repetir' : (sim.gen <= 1 && sim.phase === 0 ? 'Iniciar' : 'Continuar'));
+  $('bStep').disabled = sim.done;
+}
+
+function drawHeat() {
+  const { ctx, w, h: H } = fitCanvas(canvas);
+  if (heatR !== sim.R) buildHeat(sim.R);
+  ctx.imageSmoothingEnabled = true; ctx.drawImage(heatImg, 0, 0, w, H);
+  const R = sim.R, X = x => (x + R) / (2 * R) * w, Y = y => (R - y) / (2 * R) * H;
+  // marcas de los ejes
+  ctx.font = '600 11px ' + getComputedStyle(document.body).fontFamily; ctx.textBaseline = 'middle';
+  const ticks = R === 25 ? [-20, -10, 0, 10, 20] : [-2, -1, 0, 1, 2];
+  ctx.textAlign = 'center'; for (const t of ticks) halo(ctx, String(t).replace('-', '−'), X(t), H - 10);
+  ctx.textAlign = 'left'; for (const t of ticks) if (t !== 0) halo(ctx, String(t).replace('-', '−'), 6, Y(t));
+  // óptimos globales
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const px = X(sx * X_OPT), py = Y(sy * X_OPT);
+    ctx.lineWidth = 3.5; ctx.strokeStyle = '#fff'; ctx.strokeRect(px - 5, py - 5, 10, 10);
+    ctx.lineWidth = 1.5; ctx.strokeStyle = '#1A2740'; ctx.strokeRect(px - 5, py - 5, 10, 10);
+  }
+  // población
+  const showElite = sim.phase === 1 || sim.phase === 2;
+  const isElite = showElite ? new Set(sim.elite) : null;
+  const rad = sim.N > 400 ? 2.6 : 3.4;
+  const drawDots = faded => {
+    for (let i = 0; i < sim.P.length; i++) {
+      const el = !showElite || isElite.has(i); if (el === faded) continue;
+      const px = X(sim.P[i][0]), py = Y(sim.P[i][1]);
+      if (px < -6 || px > w + 6 || py < -6 || py > H + 6) continue;
+      ctx.globalAlpha = faded ? .28 : 1; ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU);
+      ctx.fillStyle = '#D6336C'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#fff'; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  };
+  if (showElite) drawDots(true); drawDots(false);
+  // mejor encontrada
+  if (sim.bestX) { const px = X(sim.bestX[0]), py = Y(sim.bestX[1]);
+    ctx.beginPath(); ctx.arc(px, py, 8, 0, TAU); ctx.lineWidth = 4; ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#1A2740'; ctx.stroke(); }
+  // modelo normal: media y ±2σ
+  if (sim.mean && (sim.phase === 2 || sim.phase === 3)) {
+    const cx = X(sim.mean[0]), cy = Y(sim.mean[1]), rx = Math.max(2, 2 * sim.sd[0] / (2 * R) * w), ry = Math.max(2, 2 * sim.sd[1] / (2 * R) * H);
+    for (const [lw, col] of [[5, 'rgba(255,255,255,.9)'], [2, '#1A2740']]) {
+      ctx.setLineDash([7, 5]); ctx.lineWidth = lw; ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(cx - 7, cy); ctx.lineTo(cx + 7, cy); ctx.moveTo(cx, cy - 7); ctx.lineTo(cx, cy + 7); ctx.stroke();
+    }
+  }
+}
+
+$('bPlay').addEventListener('click', () => sim.playing ? simPause() : simPlay());
+$('bStep').addEventListener('click', () => { simPause(); simStep(); });
+$('bReset').addEventListener('click', () => { simReset(); });
+document.querySelectorAll('input[name=zoom]').forEach(r => r.addEventListener('change', e => { sim.R = +e.target.value; drawHeat(); }));
+function bindSim(id, outId, suffix) {
+  $(id).addEventListener('input', e => { $(outId).textContent = e.target.value + (suffix || ''); });
+  $(id).addEventListener('change', () => { const was = sim.playing || !reduceMotion; simReset(); if (was) simPlay(); });
+}
+bindSim('slN', 'oN'); bindSim('slP', 'oP', ' %'); bindSim('slG', 'oG');
+$('slS').addEventListener('input', e => { $('oS').textContent = e.target.value; sim.speed = +e.target.value; });
+new ResizeObserver(() => drawHeat()).observe(canvas);
+
+/* =====================================================================
+   2. Perfil de una variable: h(x)
+   ===================================================================== */
+const prof = $('prof'); let probeX = 0.5;
+function drawProfile() {
+  const { ctx, w, h: H } = fitCanvas(prof);
+  const m = { l: 44, r: 16, t: 16, b: 34 }, XR = 3, YM = 30;
+  const X = x => m.l + (x + XR) / (2 * XR) * (w - m.l - m.r), Y = v => H - m.b - v / YM * (H - m.t - m.b);
+  ctx.clearRect(0, 0, w, H); ctx.font = '600 11px ' + getComputedStyle(document.body).fontFamily;
+  ctx.lineWidth = 1; ctx.strokeStyle = '#E2E8EF'; ctx.fillStyle = '#55657D'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let v = 0; v <= YM; v += 10) { ctx.beginPath(); ctx.moveTo(m.l, Y(v)); ctx.lineTo(w - m.r, Y(v)); ctx.stroke(); ctx.fillText(String(v), m.l - 8, Y(v)); }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let x = -3; x <= 3; x++) { ctx.beginPath(); ctx.moveTo(X(x), m.t); ctx.lineTo(X(x), H - m.b); ctx.stroke(); ctx.fillText(String(x).replace('-', '−'), X(x), H - m.b + 8); }
+    // curva
+  ctx.beginPath(); for (let i = 0; i <= 900; i++) { const x = -XR + i / 900 * 2 * XR; i ? ctx.lineTo(X(x), Y(h(x))) : ctx.moveTo(X(x), Y(h(x))); }
+  ctx.lineWidth = 2.2; ctx.strokeStyle = '#1A2740'; ctx.stroke();
+  // mínimos locales (círculo vacío) y globales (relleno)
+  for (let x = -2.999; x < 3; x += 0.001) {
+    if (h(x) < h(x - .001) && h(x) <= h(x + .001)) {
+      const glob = Math.abs(Math.abs(x) - X_OPT) < 0.01;
+      ctx.beginPath(); ctx.arc(X(x), Y(h(x)), glob ? 6 : 4.5, 0, TAU);
+      ctx.fillStyle = glob ? '#D6336C' : '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = glob ? '#fff' : '#0F6E7C'; ctx.stroke();
+    }
+  }
+  ctx.font = '600 12px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center';
+  ctx.beginPath(); ctx.arc(X(0), Y(20), 5, 0, TAU); ctx.fillStyle = '#1A2740'; ctx.fill();
+  halo(ctx, 'origen: h = 20', X(0), Y(20) - 16);
+  // punto de prueba
+  ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = '#0F6E7C'; ctx.beginPath(); ctx.moveTo(X(probeX), m.t); ctx.lineTo(X(probeX), H - m.b); ctx.stroke(); ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(X(probeX), Y(h(probeX)), 6.5, 0, TAU); ctx.fillStyle = '#0F6E7C'; ctx.fill(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+}
+function setProbe(x) {
+  probeX = Math.max(-3, Math.min(3, x)); $('slX').value = probeX; $('oX').textContent = probeX.toFixed(2);
+  const hv = h(probeX);
+  $('eqOut').innerHTML = `x = <b>${probeX.toFixed(2)}</b> en las cuatro variables<br>h(x) = <b>${hv.toFixed(4)}</b> por variable, así que f = 4·h(x) = <b>${(4 * hv).toFixed(4)}</b>`;
+  drawProfile();
+}
+$('slX').addEventListener('input', e => setProbe(+e.target.value));
+$('bOpt').addEventListener('click', () => setProbe(X_OPT));
+$('bOrig').addEventListener('click', () => setProbe(0));
+function probeFromPointer(e) {
+  const r = prof.getBoundingClientRect(), l = 44, rr = 16;
+  setProbe(((e.clientX - r.left - l) / (r.width - l - rr)) * 6 - 3);
+}
+prof.addEventListener('pointerdown', e => { prof.setPointerCapture(e.pointerId); probeFromPointer(e); });
+prof.addEventListener('pointermove', e => { if (prof.hasPointerCapture(e.pointerId)) probeFromPointer(e); });
+new ResizeObserver(() => drawProfile()).observe(prof);
+
+/* =====================================================================
+   3. Experimentos con n = 4
+   ===================================================================== */
+const conv = $('conv'); let lastRuns = null;
+function bindN(id, outId, suffix) { $(id).addEventListener('input', e => { $(outId).textContent = e.target.value + (suffix || ''); }); }
+bindN('nN', 'onN'); bindN('nP', 'onP', ' %'); bindN('nG', 'onG');
+
+const TOL = 1e-6;
+function genConv(hist) { const f = fopt(4); for (let g = 0; g < hist.length; g++) if (hist[g] - f < TOL) return g; return -1; }
+function drawConv() {
+  if (!lastRuns) return;
+  const { ctx, w, h: H } = fitCanvas(conv), runs = lastRuns, G = runs[0].hist.length, f = fopt(4);
+  const m = { l: 56, r: 16, t: 14, b: 36 }, EMIN = -14, EMAX = 2;
+  const X = g => m.l + g / Math.max(1, G - 1) * (w - m.l - m.r);
+  const Y = v => { const e = Math.log10(Math.max(v, 1e-14)); return m.t + (EMAX - e) / (EMAX - EMIN) * (H - m.t - m.b); };
+  ctx.clearRect(0, 0, w, H); ctx.font = '600 11px ' + getComputedStyle(document.body).fontFamily;
+  ctx.lineWidth = 1; ctx.strokeStyle = '#E2E8EF'; ctx.fillStyle = '#55657D'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let e = EMAX; e >= EMIN; e -= 2) { const y = m.t + (EMAX - e) / (EMAX - EMIN) * (H - m.t - m.b); ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(w - m.r, y); ctx.stroke(); ctx.fillText('10' + sup(e), m.l - 8, y); }
+  const step = G <= 60 ? 10 : G <= 120 ? 20 : 50; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let g = 0; g < G; g += step) { ctx.beginPath(); ctx.moveTo(X(g), m.t); ctx.lineTo(X(g), H - m.b); ctx.stroke(); ctx.fillText(String(g), X(g), H - m.b + 8); }
+  ctx.fillText('generaciones', (m.l + w - m.r) / 2, H - 16);
+  // tolerancia
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = '#D6336C'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(m.l, Y(TOL)); ctx.lineTo(w - m.r, Y(TOL)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; halo(ctx, 'tolerancia 10⁻⁶', m.l + 8, Y(TOL) - 3, '#D6336C');
+  const line = (arr, color, lw) => { ctx.beginPath(); for (let g = 0; g < G; g++) { const y = Y(arr[g] - f); g ? ctx.lineTo(X(g), y) : ctx.moveTo(X(g), y); } ctx.lineWidth = lw; ctx.strokeStyle = color; ctx.stroke(); };
+  if (runs.length > 1) {
+    runs.forEach(r => line(r.hist, 'rgba(85,101,125,.32)', 1.2));
+    const mean = new Float64Array(G); for (let g = 0; g < G; g++) { let s = 0; for (const r of runs) s += r.hist[g]; mean[g] = s / runs.length; }
+    line(mean, '#1A2740', 2.6);
+  } else line(runs[0].hist, '#1A2740', 2.6);
+}
+function stat(label, val) { return `<div class="stat"><span>${label}</span><b>${val}</b></div>`; }
+function showResults(runs) {
+  lastRuns = runs; const f = fopt(4), fits = runs.map(r => r.best), gens = runs.map(r => genConv(r.hist));
+  const ok = fits.filter(v => v - f < TOL).length, sorted = [...fits].sort((a, b) => a - b), n = fits.length;
+  const mean = fits.reduce((a, b) => a + b, 0) / n, med = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  const sdv = n > 1 ? Math.sqrt(fits.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
+  const gv = gens.filter(g => g >= 0), gm = gv.length ? (gv.reduce((a, b) => a + b, 0) / gv.length) : null;
+  let html = stat('Óptimo global de referencia', f.toFixed(6));
+  if (n === 1) {
+    html += stat('Mejor f encontrada', fits[0].toFixed(6)) + stat('Distancia al óptimo', fmt(dist(fits[0] - f), 3)) +
+      stat('Generación de convergencia', gens[0] >= 0 ? gens[0] : 'no llegó') +
+      stat('Mejor solución', Array.from(runs[0].bestX).map(v => v.toFixed(5)).join(', '));
+    $('convNote').textContent = 'Distancia entre la mejor f encontrada y el óptimo global, por generación. La escala es logarítmica.';
+    $('tableBlock').hidden = true;
+  } else {
+    html += stat('Llegaron al óptimo', `${ok} de ${n}`) + stat('Mejor', fits.reduce((a, b) => Math.min(a, b)).toFixed(6)) + stat('Peor', fits.reduce((a, b) => Math.max(a, b)).toFixed(6)) +
+      stat('Media', mean.toFixed(6)) + stat('Mediana', med.toFixed(6)) + stat('Desviación estándar', sdv < 1e-12 ? '0' : sdv.toExponential(2)) +
+      stat('Generación de convergencia', gv.length ? `media ${gm.toFixed(1)} (${Math.min(...gv)} a ${Math.max(...gv)})` : 'ninguna llegó');
+    $('convNote').textContent = 'Cada línea gris es una corrida; la línea oscura es el promedio de todas. Escala logarítmica.';
+    $('runTable').innerHTML = '<thead><tr><th>Corrida</th><th>x₁</th><th>x₂</th><th>x₃</th><th>x₄</th><th>f(x)</th><th>Gen. conv.</th></tr></thead><tbody>' +
+      runs.map((r, i) => `<tr><td>${i + 1}</td>${Array.from(r.bestX).map(v => `<td>${v.toFixed(5)}</td>`).join('')}<td>${r.best.toFixed(6)}</td><td>${gens[i] >= 0 ? gens[i] : '—'}</td></tr>`).join('') + '</tbody>';
+    $('tableBlock').hidden = false;
+  }
+  $('statsBox').innerHTML = html; $('resultBox').hidden = false; drawConv();
+}
+const nParams = () => ({ N: +$('nN').value, G: +$('nG').value, ps: +$('nP').value / 100 });
+$('bOne').addEventListener('click', () => {
+  const { N, G, ps } = nParams(); $('runStatus').textContent = '';
+  showResults([runBUMDA(N, 4, G, ps)]);
+});
+$('bThirty').addEventListener('click', async () => {
+  const { N, G, ps } = nParams(), runs = [], bs = [$('bOne'), $('bThirty')];
+  bs.forEach(b => b.disabled = true);
+  for (let i = 0; i < 30; i++) {
+    runs.push(runBUMDA(N, 4, G, ps));
+    if (i % 2 === 1) { $('runStatus').textContent = `Corrida ${i + 1} de 30…`; await new Promise(r => setTimeout(r, 0)); }
+  }
+  $('runStatus').textContent = ''; bs.forEach(b => b.disabled = false); showResults(runs);
+});
+new ResizeObserver(() => drawConv()).observe(conv);
+
+/* ---------- Arranque ---------- */
+simReset(); setProbe(0.5);
+if (!reduceMotion) setTimeout(simPlay, 700); else $('simStatus').textContent = 'Animación en pausa por tu configuración de movimiento reducido. Usa “Siguiente fase” o “Iniciar”.';
+})();
+</script>
+</body>
+</html>
